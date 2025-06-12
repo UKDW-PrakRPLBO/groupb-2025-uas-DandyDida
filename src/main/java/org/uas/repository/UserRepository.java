@@ -12,11 +12,10 @@ public class UserRepository {
     public UserRepository(Connection connection) {
         this.connection = connection;
         createTable();
+        insertDefaultAdmin();
     }
 
     public void createTable() {
-        // Create database tables if they don't exist
-        // Implement this method to create tables for users, courses, classes, and attendance records
         String userTableSql = "CREATE TABLE IF NOT EXISTS users ("
                 + "email TEXT NOT NULL PRIMARY KEY,"
                 + "username TEXT NOT NULL UNIQUE,"
@@ -25,36 +24,89 @@ public class UserRepository {
         if (connection != null) {
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(userTableSql);
-                // Execute more table creation statements as needed
             } catch (SQLException e) {
                 System.out.println(e.getMessage());
-                // Handle table creation error
             }
+        }
+    }
+
+    private void insertDefaultAdmin() {
+        // Insert admin user if not exists
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "INSERT OR IGNORE INTO users (email, username, password) VALUES (?, ?, ?)")) {
+            stmt.setString(1, "admin@ukdw.com");
+            stmt.setString(2, "admin");
+            stmt.setString(3, "admin123");
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Failed to insert default admin: " + e.getMessage());
         }
     }
 
     public List<User> findAll() {
         ArrayList<User> users = new ArrayList<>();
-
+        String sql = "SELECT email, username, password FROM users";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                users.add(new User(rs.getString("email"), rs.getString("username"), rs.getString("password")));
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
         return users;
     }
 
     public boolean authenticateUser(String username, String password) {
+        String sql = "SELECT COUNT(*) FROM users WHERE username=? AND password=?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
         return false;
     }
 
     public boolean insertUser(String email, String username, String password) {
-
+        String sql = "INSERT INTO users (email, username, password) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            stmt.setString(2, username);
+            stmt.setString(3, password);
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+        } catch (SQLException e) {
+            System.out.println("Insert user failed: " + e.getMessage());
+        }
         return false;
-
     }
 
     public boolean updateUser(String email, String username, String password) {
+        String sql = "UPDATE users SET username=?, password=? WHERE email=?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            stmt.setString(3, email);
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+        } catch (SQLException e) {
+            System.out.println("Update user failed: " + e.getMessage());
+        }
         return false;
     }
 
     public boolean deleteUser(String email) {
+        String sql = "DELETE FROM users WHERE email=?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+        } catch (SQLException e) {
+            System.out.println("Delete user failed: " + e.getMessage());
+        }
         return false;
     }
 }
-

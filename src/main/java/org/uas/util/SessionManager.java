@@ -1,8 +1,6 @@
 package org.uas.util;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class SessionManager implements Serializable {
     private static final String SESSION_FILE = "session.ser";
@@ -10,36 +8,57 @@ public class SessionManager implements Serializable {
     private static SessionManager instance;
     private boolean isLoggedIn = false;
 
-    // Static method to get the singleton instance
-    public static SessionManager getInstance() {
-        return new SessionManager();
+    private SessionManager() {
+        loadSession();
     }
 
-    // Method to check if the session file doesn't exist
-    public void createSessionFile() {
+    public static SessionManager getInstance() {
+        if (instance == null) {
+            instance = new SessionManager();
+        }
+        return instance;
+    }
 
+    public void createSessionFile() {
+        File file = new File(SESSION_FILE);
+        if (!file.exists()) {
+            saveSession();
+        }
     }
 
     private void loadSession() {
-
+        File file = new File(SESSION_FILE);
+        if (!file.exists()) {
+            isLoggedIn = false;
+            return;
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            SessionManager loaded = (SessionManager) ois.readObject();
+            this.isLoggedIn = loaded.isLoggedIn;
+        } catch (Exception e) {
+            isLoggedIn = false;
+        }
     }
 
     private void saveSession() {
-
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SESSION_FILE))) {
+            oos.writeObject(this);
+        } catch (IOException e) {
+            // ignore
+        }
     }
 
-    // Method to check if user is logged in
     public boolean isLoggedIn() {
         return isLoggedIn;
     }
 
-    // Method to simulate login
     public void login() {
-
+        isLoggedIn = true;
+        saveSession();
     }
 
-    // Method to simulate logout
     public void logout() {
-
+        isLoggedIn = false;
+        saveSession();
     }
 }
